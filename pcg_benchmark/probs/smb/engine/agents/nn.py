@@ -7,6 +7,7 @@ from .networks.simplenn import SimpleNN
 
 class Agent(MarioAgent):
     def initialize(self, model, weights_path=None):
+        torch.manual_seed(103)
         obs = model.getScreenCompleteObservation()
         # Flatten the 2D int array to 1D for neural network input sizing
         obs_flat = [item for sublist in obs for item in sublist]
@@ -31,7 +32,7 @@ class Agent(MarioAgent):
         # output from the model should be a sigmoid [0, 1, 0, 0, 1...]
         output = self.brain(obs_tensor)
         print(f"NN raw output: {output}")
-        
+
         return output
     
     def getAgentName(self):
