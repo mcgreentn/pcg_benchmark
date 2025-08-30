@@ -7,4 +7,4 @@ levelPath = "./data/smb/original/lvl-1.txt"
 with open(levelPath, 'r') as file:
     level_1 = file.read()
 
-    runLevel(level_1, "nn", gameTime=20, iterations=1)    
+    runLevel(level_1, "nn", gameTime=20, iterations=1, seed=0)    

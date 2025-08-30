@@ -11,12 +11,13 @@ class SimpleNN(nn.Module):
         super().__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, output_size)
-        self.output_activation = nn.Sigmoid()
+        self.output_activation = nn.Hardtanh()
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         x = self.output_activation(x)
+        x = self.round(x)
         return x
 
     def get_weights(self):
@@ -30,3 +31,12 @@ class SimpleNN(nn.Module):
             numel = p.data.numel()
             p.data.copy_(flat_weights[idx:idx+numel].view_as(p.data))
             idx += numel
+
+    def round(self, input):
+        """
+        Clamp tensor values to [0, 1] and round to 0 or 1 as int.
+        0 <= x < 0.5 -> 0
+        0.5 <= x <= 1 -> 1
+        """
+        rounded = torch.where(input < 0.5, torch.zeros_like(input), torch.ones_like(input))
+        return rounded.int()
