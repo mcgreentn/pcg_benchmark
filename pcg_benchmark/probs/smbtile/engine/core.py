@@ -108,7 +108,7 @@ class MarioGame:
         self.setAgent(agent)
         return self._gameLoop(level, timer, marioState)
 
-    def _gameLoop(self, level, timer, marioState):
+    def setup(self, level, timer, marioState):
         self._world = MarioWorld(self._killEvents)
         self._world.initializeLevel(level, 1000 * timer)
         self._world.mario.isLarge = marioState > 0
@@ -118,6 +118,9 @@ class MarioGame:
         MarioForwardModel.maxMoves = MarioGame.maxMoves
         fwdModel = MarioForwardModel(self._world.clone())
         self._agent.initialize(fwdModel)
+
+    def _gameLoop(self, level, timer, marioState):
+        self.setup(level, timer, marioState)
 
         gameEvents = []
         agentEvents = []

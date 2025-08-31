@@ -6,20 +6,33 @@ from .networks.simplenn import SimpleNN
 
 
 class Agent(MarioAgent):
-    def initialize(self, model, weights_path=None):
-        torch.manual_seed(103)
+    def __init__(self, seed=None, weights_path=None):
+        super().__init__(seed)
+        self.seed = seed
+        if weights_path is not None:
+            self.weights_path = weights_path
+
+    def initialize(self, model):
+        if self.seed is not None:
+            torch.manual_seed(self.seed)
+
+        # Flatten the 2D observation to 1D for neural network input sizing
         obs = model.getScreenCompleteObservation()
-        # Flatten the 2D int array to 1D for neural network input sizing
         obs_flat = [item for sublist in obs for item in sublist]
         input_size = len(obs_flat)
-        
+        total_size = input_size
         # hidden should be an attribute of this model. Right now it defaults to 128
         hidden_size = getattr(self, 'hidden_size', 128)
-        self.brain = SimpleNN(input_size=input_size, hidden_size=hidden_size, output_size=MarioActions.numberOfActions())
-        if weights_path:
-            # TODO mcgreen: verify that we want CPU :) I think we do since its evo not backprop
-            weights = torch.load(weights_path, map_location='cpu')
-            self.brain.set_weights(weights)
+        output_size = MarioActions.numberOfActions()
+        total_size += hidden_size + output_size
+        self.total_size = total_size
+
+        self.brain = SimpleNN(input_size=input_size, hidden_size=hidden_size, output_size=output_size)
+        if self.weights_path:
+            print(f"Loading weights from {self.weights_path}")
+            self.brain.load_weights(self.weights_path)
+        else:
+            self.brain.save_weights("./data/smb/weights.json")  # Save initial weights
         return
     
     def getActions(self, model):
@@ -38,3 +51,6 @@ class Agent(MarioAgent):
     def getAgentName(self):
         return "MarioNeuralNetAgent"
     
+
+    def save_weights(agent, path):
+        torch.save(agent.brain.state_dict(), path)

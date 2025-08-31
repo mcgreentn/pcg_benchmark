@@ -9,7 +9,8 @@ class MarioAgent:
             self._random = np.random.default_rng()
         else:
             self._random = np.random.default_rng(seed)
-    
+            self.seed = seed
+
     def initialize(self, model):
         raise NotImplementedError("implement the initialize function")
     

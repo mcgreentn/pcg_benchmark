@@ -24,13 +24,14 @@ class SimpleNN(nn.Module):
         """Return all weights as a single flat tensor."""
         return torch.cat([p.data.view(-1) for p in self.parameters()])
 
-    def set_weights(self, flat_weights):
-        """Set all weights from a single flat tensor."""
-        idx = 0
-        for p in self.parameters():
-            numel = p.data.numel()
-            p.data.copy_(flat_weights[idx:idx+numel].view_as(p.data))
-            idx += numel
+    def load_weights(self, weights_path):
+        """Load weights from checkpoint."""
+        checkpoint = torch.load(weights_path, weights_only=True)
+        self.load_state_dict(checkpoint['model_state_dict'])
+
+    def save_weights(self, path):
+        """Save model weights to checkpoint."""
+        torch.save({'model_state_dict': self.state_dict()}, path)
 
     def round(self, input):
         """
