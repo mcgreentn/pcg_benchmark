@@ -57,10 +57,12 @@ class MarioEvolutionDriver:
         # the initial model is a NN
         initial_model = nn.Agent()
         game = MarioGame()
+        game.setAgent(initial_model)
+        game.setup(self.level, 20, 0)
         fwdModel = MarioForwardModel(game._world.clone())
         initial_model.initialize(fwdModel)
         archive = GridArchive(
-            solution_dim=initial_model.total_size,
+            solution_dim=initial_model.brain.get_weights().numel(),
             dims=[self.coins_dim, self.kills_dim],
             ranges=[(0.0, self.coins_dim), (0.0, self.kills_dim)],
             qd_score_offset=-600,
@@ -68,10 +70,11 @@ class MarioEvolutionDriver:
         return archive, initial_model
 
     def create_emitters(self, archive, initial_model):
+        print(initial_model.brain.get_weights().flatten())
         emitters = [
             EvolutionStrategyEmitter(
                 archive=archive,
-                x0=initial_model.flatten(),
+                x0=initial_model.brain.get_weights().flatten(),
                 sigma0=1.0,
                 ranker="2imp",
                 batch_size=3,

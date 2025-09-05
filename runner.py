@@ -14,7 +14,7 @@ def runLevel(levelString, gameTime = 20, iterations = 100, stickyActions = 8, ma
 if __name__ == "__main__":
     # load them into the runner as text
     levelPath = "./data/smb/original/lvl-1.txt"
-    # read this
+    # read this file
     with open(levelPath, 'r') as file:
         level_1 = file.read()
 

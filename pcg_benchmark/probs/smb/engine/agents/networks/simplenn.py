@@ -9,7 +9,7 @@ class SimpleNN(nn.Module):
     """
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.fc1 = nn.Conv2d(input_size, hidden_size, kernel_size=3, stride=1, padding=1)
         self.fc2 = nn.Linear(hidden_size, output_size)
         self.output_activation = nn.Hardtanh()
 

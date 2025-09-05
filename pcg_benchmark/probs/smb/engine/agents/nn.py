@@ -11,6 +11,8 @@ class Agent(MarioAgent):
         self.seed = seed
         if weights_path is not None:
             self.weights_path = weights_path
+        else:
+            self.weights_path = None
 
     def initialize(self, model):
         if self.seed is not None:
@@ -22,7 +24,7 @@ class Agent(MarioAgent):
         input_size = len(obs_flat)
         total_size = input_size
         # hidden should be an attribute of this model. Right now it defaults to 128
-        hidden_size = getattr(self, 'hidden_size', 128)
+        hidden_size = getattr(self, 'hidden_size', 16)
         output_size = MarioActions.numberOfActions()
         total_size += hidden_size + output_size
         self.total_size = total_size
