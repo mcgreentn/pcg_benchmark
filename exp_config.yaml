@@ -1,6 +1,6 @@
 n_emitters: 3
-n_iterations: 5
-coins_dim: 10
-kills_dim: 10
+n_iterations: 1
+coins_dim: 2
+kills_dim: 2
 workers: 3
 level_path: "./data/smb/original/lvl-1.txt"

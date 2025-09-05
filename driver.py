@@ -70,7 +70,7 @@ class MarioEvolutionDriver:
         return archive, initial_model
 
     def create_emitters(self, archive, initial_model):
-        print(initial_model.brain.get_weights().flatten())
+        print(initial_model.brain.get_weights().numel())
         emitters = [
             EvolutionStrategyEmitter(
                 archive=archive,
