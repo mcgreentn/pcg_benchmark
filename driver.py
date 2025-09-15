@@ -23,11 +23,11 @@ class MarioEvolutionDriver:
         self.gen_dir = os.path.join("data", "smb", "gen")
         self.listeners_file = os.path.join("data", "smb", "listeners", "ids.txt")
 
-        self.n_emitters = self.config.get("n_emitters", 5)
+        self.n_emitters = self.config.get("n_emitters", 3)
         self.n_iterations = self.config.get("n_iterations", 1)
 
-        self.coins_dim = self.config.get("coins_dim", 10)
-        self.kills_dim = self.config.get("kills_dim", 10)
+        self.coins_dim = self.config.get("coins_dim", 2)
+        self.kills_dim = self.config.get("kills_dim", 2)
         self.workers = self.config.get("workers", 2)
         level_path = self.config.get("level_path", "./data/smb/original/lvl-1.txt")
         with open(level_path, 'r') as file:
@@ -62,7 +62,7 @@ class MarioEvolutionDriver:
         fwdModel = MarioForwardModel(game._world.clone())
         initial_model.initialize(fwdModel)
         archive = GridArchive(
-            solution_dim=initial_model.brain.get_weights().numel(),
+            solution_dim=initial_model.brain.get_param_size(),
             dims=[self.coins_dim, self.kills_dim],
             ranges=[(0.0, self.coins_dim), (0.0, self.kills_dim)],
             qd_score_offset=-600,
@@ -70,7 +70,8 @@ class MarioEvolutionDriver:
         return archive, initial_model
 
     def create_emitters(self, archive, initial_model):
-        print(initial_model.brain.get_weights().numel())
+        print("Numel: ", initial_model.brain.get_weights().numel())
+        print("Param Size: ", initial_model.brain.get_param_size())
         emitters = [
             EvolutionStrategyEmitter(
                 archive=archive,
@@ -99,10 +100,10 @@ class MarioEvolutionDriver:
             solutions = self.scheduler.ask()
             
             # Evaluate the models and record the objectives and measures.
-            futures = client.map(lambda model: runLevel(model, self.level), solutions)
-            results = client.gather(futures)
-            print(results)
-            objectives, measures = [], []
+            # futures = client.map(lambda model: runLevel(model, self.level), solutions)
+            # results = client.gather(futures)
+            # print(results)
+            # objectives, measures = [], []
 
 if __name__ == "__main__":
     driver = MarioEvolutionDriver()

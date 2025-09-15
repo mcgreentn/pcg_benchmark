@@ -18,18 +18,13 @@ class Agent(MarioAgent):
         if self.seed is not None:
             torch.manual_seed(self.seed)
 
-        # Flatten the 2D observation to 1D for neural network input sizing
+        # send the observation in
         obs = model.getScreenCompleteObservation()
-        obs_flat = [item for sublist in obs for item in sublist]
-        input_size = len(obs_flat)
-        total_size = input_size
+       
         # hidden should be an attribute of this model. Right now it defaults to 128
-        hidden_size = getattr(self, 'hidden_size', 16)
         output_size = MarioActions.numberOfActions()
-        total_size += hidden_size + output_size
-        self.total_size = total_size
 
-        self.brain = SimpleNN(input_size=input_size, hidden_size=hidden_size, output_size=output_size)
+        self.brain = SimpleNN(obs=obs, output_size=output_size)
         if self.weights_path:
             print(f"Loading weights from {self.weights_path}")
             self.brain.load_weights(self.weights_path)
