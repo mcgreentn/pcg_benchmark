@@ -100,10 +100,12 @@ class MarioEvolutionDriver:
             solutions = self.scheduler.ask()
             
             # Evaluate the models and record the objectives and measures.
-            # futures = client.map(lambda model: runLevel(model, self.level), solutions)
-            # results = client.gather(futures)
-            # print(results)
+            futures = client.map(lambda model: runLevel(model, self.level), solutions)
+            results = client.gather(futures)
+            print(results)
             # objectives, measures = [], []
+
+        print("Final archive:", self.archive)
 
 if __name__ == "__main__":
     driver = MarioEvolutionDriver()

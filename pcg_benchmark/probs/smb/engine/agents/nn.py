@@ -3,6 +3,7 @@ import torch
 from ..core import MarioAgent
 from ..helper import MarioActions
 from .networks.simplenn import SimpleNN
+import numpy as np
 
 
 class Agent(MarioAgent):
@@ -20,6 +21,8 @@ class Agent(MarioAgent):
 
         # send the observation in
         obs = model.getScreenCompleteObservation()
+        obs = np.array(obs, dtype=np.float32)
+        print(type(obs))
        
         # hidden should be an attribute of this model. Right now it defaults to 128
         output_size = MarioActions.numberOfActions()

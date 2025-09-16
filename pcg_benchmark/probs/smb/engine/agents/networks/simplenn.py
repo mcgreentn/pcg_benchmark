@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-def conv_out_shape(input_dim, height, width, out_dim, k_height, k_width, padding=0, stride=1, dilation=1):
+def conv_out_shape(height, width, out_dim, k_height, k_width, padding=0, stride=1, dilation=1):
     height = int((height + 2 * padding - dilation * (k_height - 1) - 1) / stride + 1)
     width = int((width + 2 * padding - dilation * (k_width - 1) - 1) / stride + 1)
     return (out_dim, height, width)
@@ -18,11 +18,11 @@ class SimpleNN(nn.Module):
         obs_shape = obs.shape
         current_shape = obs_shape
         self.conv1 = nn.Conv2d(obs_shape[0], 32, kernel_size=3, stride=2)
-        current_shape = conv_out_shape(current_shape[0], current_shape[1], current_shape[2], 32, 3, 3, stride=2)
+        current_shape = conv_out_shape(current_shape[0], current_shape[1], 32, 3, 3, stride=2)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=2)
-        current_shape = conv_out_shape(current_shape[0], current_shape[1], current_shape[2], 64, 3, 3, stride=2)
+        current_shape = conv_out_shape(current_shape[0], current_shape[1], 64, 3, 3, stride=2)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
-        current_shape = conv_out_shape(current_shape[0], current_shape[1], current_shape[2], 64, 3, 3, stride=2)
+        current_shape = conv_out_shape(current_shape[0], current_shape[1], 64, 3, 3, stride=2)
         self.fc1 = nn.Linear(np.prod(current_shape), 64)
         self.fc2 = nn.Linear(64, output_size)
 
