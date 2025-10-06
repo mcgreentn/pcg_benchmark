@@ -1,5 +1,7 @@
 import torch
-from pcg_benchmark.probs.smb.engine.core import MarioGame, MarioAgent
+from pcg_benchmark.probs.smb.engine.core import MarioAgent, MarioForwardModel
+from pcg_benchmark.probs.smbtile.engine.core import MarioGame
+
 from pcg_benchmark.probs.smb.engine.agents import nn
 
 def runLevel(levelString, gameTime = 20, iterations = 100, stickyActions = 8, marioState = 0, seed = None):
@@ -11,6 +13,19 @@ def runLevel(levelString, gameTime = 20, iterations = 100, stickyActions = 8, ma
     # returns MarioResult
     return game.runGame(agent, levelString, gameTime, marioState)
 
+def runLevelWithNet(levelString, net, gameTime = 20, iterations = 100, stickyActions = 8, marioState = 0, seed = None):
+    MarioAgent.iterations = iterations
+    MarioAgent.stickyActions = stickyActions
+    game = MarioGame()
+    agent = nn.Agent(seed)
+    game.setAgent(agent)
+    game.setup(levelString, 20, 0)
+    
+    agent.brain.load_weights(net) # load weights from net
+    
+    # returns MarioResult
+    return game.runGame(agent, levelString, gameTime, marioState
+                        )
 if __name__ == "__main__":
     # load them into the runner as text
     levelPath = "./data/smb/original/lvl-1.txt"

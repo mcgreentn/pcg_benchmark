@@ -10,8 +10,11 @@ from pcg_benchmark.probs.smb.engine.agents import nn
 from pcg_benchmark.probs.smb.engine.core import MarioForwardModel
 from pcg_benchmark.probs.smbtile.engine.core import MarioGame
 from dask.distributed import Client
-from runner import runLevel
+from runner import runLevelWithNet
 import yaml
+from ribs.visualize import grid_archive_heatmap
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 
 class MarioEvolutionDriver:
@@ -23,8 +26,8 @@ class MarioEvolutionDriver:
         self.gen_dir = os.path.join("data", "smb", "gen")
         self.listeners_file = os.path.join("data", "smb", "listeners", "ids.txt")
 
-        self.n_emitters = self.config.get("n_emitters", 3)
-        self.n_iterations = self.config.get("n_iterations", 1)
+        self.n_emitters = self.config.get("n_emitters", 1)
+        self.n_iterations = self.config.get("n_iterations", 2)
 
         self.coins_dim = self.config.get("coins_dim", 2)
         self.kills_dim = self.config.get("kills_dim", 2)
@@ -70,8 +73,6 @@ class MarioEvolutionDriver:
         return archive, initial_model
 
     def create_emitters(self, archive, initial_model):
-        print("Numel: ", initial_model.brain.get_weights().numel())
-        print("Param Size: ", initial_model.brain.get_param_size())
         emitters = [
             EvolutionStrategyEmitter(
                 archive=archive,
@@ -95,17 +96,28 @@ class MarioEvolutionDriver:
             threads_per_worker=1,  # Each worker process is single-threaded.
         )
 
-        for iteration in range(self.n_iterations):
-            print(f"=== Iteration {iteration} ===")
+        for iteration in tqdm(range(self.n_iterations), desc="Iterations"):
+            tqdm.write(f"=== Iteration {iteration} ===")
             solutions = self.scheduler.ask()
-            
             # Evaluate the models and record the objectives and measures.
-            futures = client.map(lambda model: runLevel(model, self.level), solutions)
-            results = client.gather(futures)
-            print(results)
-            # objectives, measures = [], []
+            futures = client.map(lambda model: runLevelWithNet(self.level, model), solutions)
+            results = list(tqdm(client.gather(futures), desc="Evaluating solutions", total=len(solutions)))
+
+            objectives, measures = [], []
+            for result in results:
+                objectives.append(result.getCompletionPercentage())
+                measures.append([result.getNumCollectedTileCoins(), result.getKillsTotal()])
+
+            self.scheduler.tell(objectives, measures)
 
         print("Final archive:", self.archive)
+
+        plt.figure(figsize=(8, 6))
+        grid_archive_heatmap(self.archive, vmin=-0, vmax=1)
+        plt.gca().invert_yaxis()  # Makes more sense if larger velocities are on top.
+        plt.ylabel("Collected Coins")
+        plt.xlabel("Enemy Squishes")
+        plt.show()
 
 if __name__ == "__main__":
     driver = MarioEvolutionDriver()

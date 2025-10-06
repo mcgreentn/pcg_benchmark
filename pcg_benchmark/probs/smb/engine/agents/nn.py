@@ -18,18 +18,17 @@ class Agent(MarioAgent):
     def initialize(self, model):
         if self.seed is not None:
             torch.manual_seed(self.seed)
-
         # send the observation in
         obs = model.getScreenCompleteObservation()
         obs = np.array(obs, dtype=np.float32)
-        print(type(obs))
-       
-        # hidden should be an attribute of this model. Right now it defaults to 128
+        # convert to tensor (necessary?)
+        obs = torch.tensor(obs, dtype=torch.float32)
+        # reshape obs to (1, 16, 16)
+        obs = obs.unsqueeze(0)
         output_size = MarioActions.numberOfActions()
 
         self.brain = SimpleNN(obs=obs, output_size=output_size)
         if self.weights_path:
-            print(f"Loading weights from {self.weights_path}")
             self.brain.load_weights(self.weights_path)
         else:
             self.brain.save_weights("./data/smb/weights.json")  # Save initial weights
@@ -38,14 +37,15 @@ class Agent(MarioAgent):
     def getActions(self, model):
         # get model observation for input
         obs = model.getScreenCompleteObservation()
-        obs_flat = [item for sublist in obs for item in sublist]
         # convert to tensor (necessary?)
-        obs_tensor = torch.tensor(obs_flat, dtype=torch.float32)
+        obs = torch.tensor(obs, dtype=torch.float32)
+        # reshape obs to (1, 16, 16)
+        obs = obs.unsqueeze(0)
         
         # output from the model should be a sigmoid [0, 1, 0, 0, 1...]
-        output = self.brain(obs_tensor)
-        print(f"NN raw output: {output}")
-
+        output = self.brain(obs)
+        output = output.detach().numpy()
+        output = output.round().astype(int)
         return output
     
     def getAgentName(self):
