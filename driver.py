@@ -1,8 +1,5 @@
 import os
 import shutil
-import json
-from xmlrpc import client
-import numpy as np
 from ribs.archives import GridArchive
 from ribs.emitters import EvolutionStrategyEmitter
 from ribs.schedulers import Scheduler
@@ -12,9 +9,8 @@ from pcg_benchmark.probs.smbtile.engine.core import MarioGame
 from dask.distributed import Client
 from runner import runLevelWithNet
 import yaml
-from ribs.visualize import grid_archive_heatmap
 from tqdm import tqdm
-import matplotlib.pyplot as plt
+
 
 
 class MarioEvolutionDriver:
@@ -71,6 +67,12 @@ class MarioEvolutionDriver:
             qd_score_offset=-600,
         )
         return archive, initial_model
+    def save_archive(self, path):
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+        df = self.archive.data(return_type="pandas")
+        # save this DF at the filepath location
+        df.to_csv(path)
 
     def create_emitters(self, archive, initial_model):
         emitters = [
@@ -95,7 +97,6 @@ class MarioEvolutionDriver:
             n_workers=self.workers,  # Create this many worker processes using Dask LocalCluster.
             threads_per_worker=1,  # Each worker process is single-threaded.
         )
-
         for iteration in tqdm(range(self.n_iterations), desc="Iterations"):
             tqdm.write(f"=== Iteration {iteration} ===")
             solutions = self.scheduler.ask()
@@ -109,15 +110,21 @@ class MarioEvolutionDriver:
                 measures.append([result.getNumCollectedTileCoins(), result.getKillsTotal()])
 
             self.scheduler.tell(objectives, measures)
+            # print some helpful metrics every 100 iterations
+            if iteration % 100 == 0:
+                archive_stats = self.archive.stats
+                tqdm.write(f"Coverage: {archive_stats.coverage}")
+                tqdm.write(f"Num Elites: {archive_stats.num_elites}")
+                tqdm.write(f"Best Fitness: {archive_stats.obj_max}")
+            # save archive grid every 1000 iterations
+            if iteration % 1000 == 0:
+                self.save_archive(f"./data/smb/archive_{iteration}.csv")
+            
 
-        print("Final archive:", self.archive)
-
-        plt.figure(figsize=(8, 6))
-        grid_archive_heatmap(self.archive, vmin=-0, vmax=1)
-        plt.gca().invert_yaxis()  # Makes more sense if larger velocities are on top.
-        plt.ylabel("Collected Coins")
-        plt.xlabel("Enemy Squishes")
-        plt.show()
+        # save archive grid at the end
+        self.save_archive("./data/smb/archive_final.csv")
+        
+        
 
 if __name__ == "__main__":
     driver = MarioEvolutionDriver()

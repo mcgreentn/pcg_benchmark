@@ -1,5 +1,5 @@
-n_emitters: 5
-n_iterations: 5000
+n_emitters: 1
+n_iterations: 100
 coins_dim: 1
 kills_dim: 1
 workers: 5
