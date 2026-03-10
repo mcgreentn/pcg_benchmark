@@ -1,6 +1,7 @@
-n_emitters: 1
-n_iterations: 100
-coins_dim: 1
-kills_dim: 1
-workers: 5
-level_path: "./data/smb/original/lvl-1.txt"
+n_emitters: 3
+n_iterations: 10
+checkpoint_interval: 5
+coins_dim: 3
+kills_dim: 3
+workers: 3
+level_path: "./data/smb/test/lvl-1.txt"
