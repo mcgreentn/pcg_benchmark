@@ -55,11 +55,26 @@ class SimpleNN(nn.Module):
         return torch.cat([p.data.view(-1) for p in self.parameters()])
 
     def load_weights(self, weights_path):
-        """Load weights from checkpoint."""
+        """Load weights from a torch checkpoint (str) or a flat parameter vector (ndarray)."""
         if isinstance(weights_path, str):
             checkpoint = torch.load(weights_path, weights_only=True)
-            self.load_state_dict(checkpoint['model_state_dict'])
+            try:
+                self.load_state_dict(checkpoint['model_state_dict'])
+            except RuntimeError as e:
+                # A checkpoint saved from a different architecture fails here with a wall
+                # of per-tensor size mismatches. Say what actually went wrong instead.
+                raise RuntimeError(
+                    f"Checkpoint '{weights_path}' does not match the current SimpleNN "
+                    f"architecture ({self.get_param_size()} parameters). It was most likely "
+                    f"saved from an older version of the network; regenerate it with "
+                    f"SimpleNN.save_weights() or pass a flat parameter vector instead.\n{e}"
+                ) from e
         elif isinstance(weights_path, np.ndarray):
+            if len(weights_path) != self.get_param_size():
+                raise ValueError(
+                    f"Expected a flat parameter vector of length {self.get_param_size()}, "
+                    f"got {len(weights_path)}."
+                )
             self.set_param(weights_path)
         else:
             raise ValueError("weights_path must be a file path (str) or numpy array")

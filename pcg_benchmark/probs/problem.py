@@ -17,6 +17,17 @@ class Problem:
         self._control_space = None
     
     """
+    Adjust the parameters of the problem after it has been constructed. The base
+    implementation does nothing, it only exists so subclasses can call it and stay
+    correct if the base class starts tracking shared parameters.
+
+    Parameters:
+        kwargs(any): these are the parameters for the child problem class
+    """
+    def parameters(self, **kwargs):
+        pass
+
+    """
     Get all the needed information about the content to be able to evaluate it fast.
     This class is called before calling quality, diversity, or controlability. 
     This function is useful to speed the process for calculating all the metrics. 

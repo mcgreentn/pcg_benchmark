@@ -2,10 +2,13 @@ import os
 import time
 import subprocess
 
+from config import get_output_dir
+
 class Listener:
-    def __init__(self, listener_id, check_interval=2):
+    def __init__(self, listener_id, check_interval=2, run_dir=None):
         self.listener_id = listener_id
-        self.run_dir = os.path.join("data", "smb", "run")
+        # Matches driver.run_dir, which lives under the untracked run-output directory.
+        self.run_dir = run_dir or os.path.join(get_output_dir(), "run")
         self.running = True
         self.check_interval = check_interval
 

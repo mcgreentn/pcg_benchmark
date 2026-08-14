@@ -169,3 +169,10 @@ cython_debug/
 
 plots
 results
+
+# Experiment run products (archive CSVs, heatmaps, scratch dirs).
+# data/ holds tracked inputs only; everything a run writes goes here.
+output/
+
+# Local scratch notes and write-ups. Not part of the repo.
+notes/

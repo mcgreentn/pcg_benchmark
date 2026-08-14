@@ -1,7 +1,36 @@
-n_emitters: 3
-n_iterations: 10
-checkpoint_interval: 5
-coins_dim: 3
-kills_dim: 3
-workers: 3
-level_path: "./data/smb/test/lvl-1.txt"
+# --- search budget -------------------------------------------------------------
+# Evaluations per iteration = n_emitters * batch_size. Total = that x n_iterations.
+n_emitters: 3          # independent CMA-ES distributions
+batch_size: 3          # genomes each emitter proposes per iteration
+n_iterations: 10       # ask/tell cycles -- 10 is a smoke test, not a real run
+checkpoint_interval: 5 # dump the archive every N iterations
+workers: 3             # Dask processes, one thread each
+
+# --- search behaviour ----------------------------------------------------------
+sigma0: 1.0            # initial mutation spread of each emitter
+ranker: "2imp"         # how pyribs ranks candidates (see ribs.emitters.rankers)
+
+# --- evaluation ----------------------------------------------------------------
+game_time: 20          # seconds of simulated game per evaluation
+
+# Seeds the initial network, every emitter, and the archive. Set to null for a
+# different search each run; with a seed, identical configs reproduce exactly.
+seed: 0
+
+# Behavior measures -- the archive axes, in order. These describe HOW a run played;
+# the objective (completion %) is the only thing being maximized.
+# Ranges must cover real play: pyribs clips out-of-range values into the edge cell
+# rather than erroring, which silently merges distinct behaviors.
+#
+# `max: auto` resolves at startup: coins/kills from level_path (lvl-1 holds 11 coins
+# and 15 enemies), time from game_time above. Jumps has no natural ceiling to read.
+measures:
+  coins: {bins: 4, max: auto}         # tile coins collected
+  kills: {bins: 4, max: auto}         # enemies defeated, falls excluded
+  time:  {bins: 4, max: auto}         # seconds left on the clock -- speedrunning
+  jumps: {bins: 4, min: 0, max: 24}   # jumps taken -- acrobatics (heuristic scores 22)
+level_path: "./data/smb/original/lvl-1.txt"
+
+# Everything a run produces (archive CSVs, heatmaps, scratch dirs) goes here.
+# Untracked -- see .gitignore. Override per-run with the PCG_OUTPUT_DIR env var.
+output_dir: "./output/smb"

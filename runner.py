@@ -1,6 +1,4 @@
-import torch
-from pcg_benchmark.probs.smb.engine.core import MarioAgent, MarioForwardModel
-from pcg_benchmark.probs.smbtile.engine.core import MarioGame
+from pcg_benchmark.probs.smb.engine.core import MarioAgent, MarioGame
 
 from pcg_benchmark.probs.smb.engine.agents import nn
 
@@ -9,7 +7,7 @@ def runLevel(levelString, gameTime = 20, iterations = 100, stickyActions = 8, ma
     MarioAgent.stickyActions = stickyActions
     game = MarioGame()
     agent = nn.Agent(seed, weights_path="./data/smb/weights.json")
-    
+
     # returns MarioResult
     return game.runGame(agent, levelString, gameTime, marioState)
 
@@ -17,15 +15,13 @@ def runLevelWithNet(levelString, net, gameTime = 20, iterations = 100, stickyAct
     MarioAgent.iterations = iterations
     MarioAgent.stickyActions = stickyActions
     game = MarioGame()
-    agent = nn.Agent(seed)
-    game.setAgent(agent)
-    game.setup(levelString, 20, 0)
-    
-    agent.brain.load_weights(net) # load weights from net
-    
+    # Hand the genome to the agent up front: runGame() re-runs setup(), so weights
+    # assigned to agent.brain after construction would be evaluated inconsistently.
+    agent = nn.Agent(seed, weights=net)
+
     # returns MarioResult
-    return game.runGame(agent, levelString, gameTime, marioState
-                        )
+    return game.runGame(agent, levelString, gameTime, marioState)
+
 if __name__ == "__main__":
     # load them into the runner as text
     levelPath = "./data/smb/original/lvl-1.txt"
@@ -33,7 +29,7 @@ if __name__ == "__main__":
     with open(levelPath, 'r') as file:
         level_1 = file.read()
 
-        result = runLevel(level_1, "nn", gameTime=20, iterations=1, seed=0)    
+        result = runLevel(level_1, gameTime=20, iterations=1, seed=0)
         print("Game Status:", result.getGameStatus())
         print("Completion %:", result.getCompletionPercentage())
         print("Remaining Time:", result.getRemainingTime())

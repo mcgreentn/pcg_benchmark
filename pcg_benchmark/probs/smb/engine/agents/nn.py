@@ -7,31 +7,42 @@ import numpy as np
 
 
 class Agent(MarioAgent):
-    def __init__(self, seed=None, weights_path=None):
+    """
+    Mario agent driven by a SimpleNN. The network is either randomly initialized,
+    loaded from a torch checkpoint (weights_path), or seeded from a flat parameter
+    vector (weights) as produced by an evolutionary search.
+    """
+    def __init__(self, seed=None, weights_path=None, weights=None):
         super().__init__(seed)
         self.seed = seed
-        if weights_path is not None:
-            self.weights_path = weights_path
-        else:
-            self.weights_path = None
+        self.weights_path = weights_path
+        self.weights = weights
+        self.brain = None
 
     def initialize(self, model):
-        if self.seed is not None:
-            torch.manual_seed(self.seed)
-        # send the observation in
-        obs = model.getScreenCompleteObservation()
-        obs = np.array(obs, dtype=np.float32)
-        # convert to tensor (necessary?)
-        obs = torch.tensor(obs, dtype=torch.float32)
-        # reshape obs to (1, 16, 16)
-        obs = obs.unsqueeze(0)
-        output_size = MarioActions.numberOfActions()
+        # MarioGame.setup() calls initialize() on every run, so building the brain has
+        # to be idempotent -- otherwise a freshly constructed network would silently
+        # replace weights that were assigned between setup() and runGame().
+        if self.brain is None:
+            if self.seed is not None:
+                torch.manual_seed(self.seed)
+            # send the observation in
+            obs = model.getScreenCompleteObservation()
+            obs = np.array(obs, dtype=np.float32)
+            # convert to tensor (necessary?)
+            obs = torch.tensor(obs, dtype=torch.float32)
+            # reshape obs to (1, 16, 16)
+            obs = obs.unsqueeze(0)
+            output_size = MarioActions.numberOfActions()
 
-        self.brain = SimpleNN(obs=obs, output_size=output_size)
-        if self.weights_path:
+            self.brain = SimpleNN(obs=obs, output_size=output_size)
+
+        # Re-apply the requested weights on every initialize so that a replayed game
+        # always evaluates the same network.
+        if self.weights is not None:
+            self.brain.load_weights(self.weights)
+        elif self.weights_path:
             self.brain.load_weights(self.weights_path)
-        else:
-            self.brain.save_weights("./data/smb/weights.json")  # Save initial weights
         return
     
     def getActions(self, model):
@@ -50,7 +61,8 @@ class Agent(MarioAgent):
     
     def getAgentName(self):
         return "MarioNeuralNetAgent"
-    
 
-    def save_weights(agent, path):
-        torch.save(agent.brain.state_dict(), path)
+    def save_weights(self, path):
+        # Delegate so the checkpoint layout stays in sync with SimpleNN.load_weights,
+        # which expects a dict under the "model_state_dict" key.
+        self.brain.save_weights(path)
