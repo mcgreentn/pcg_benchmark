@@ -39,6 +39,9 @@ class MarioEvolutionDriver:
 
         self.measures = load_measures(self.config)
         self.workers = self.config.get("workers", 2)
+        # Threads INSIDE one evaluation. Parallelism is across genomes, so 1 is right
+        # unless benchmark.py says otherwise on this box. See set_eval_threads().
+        self.torch_threads = self.config.get("torch_threads", 1)
         level_path = self.config.get("level_path", "./data/smb/original/lvl-1.txt")
         with open(level_path, 'r') as file:
             self.level = file.read()
@@ -48,6 +51,8 @@ class MarioEvolutionDriver:
         print(f"Search:  {self.n_emitters} emitters x batch {self.batch_size} = {evals} evals/iter, "
               f"{evals * self.n_iterations} total over {self.n_iterations} iterations")
         print(f"Seed:    {self.seed if self.seed is not None else 'none (search will differ each run)'}")
+        print(f"Compute: {self.workers} workers x {self.torch_threads} torch thread(s)"
+              f" -- run benchmark.py on this box to size these")
         self.archive, self.initial_model = self.create_archive()
         self.emitters = self.create_emitters(self.archive, self.initial_model)
         self.scheduler = self.create_scheduler(self.archive, self.emitters)
@@ -169,12 +174,20 @@ class MarioEvolutionDriver:
         if self.start_iteration == 0:
             self.clean_dirs()
         # self.shutdown_listeners()
+        # OpenMP/MKL size their pools at import, before any Python in the worker gets
+        # to run, so the cap has to be in the environment the workers inherit --
+        # set_eval_threads() alone is too late for them.
+        worker_env = {var: str(self.torch_threads)
+                      for var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS",
+                                  "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS")}
         client = Client(
             n_workers=self.workers,  # Create this many worker processes using Dask LocalCluster.
             threads_per_worker=1,  # Each worker process is single-threaded.
+            env=worker_env,
         )
         run_fn = partial(runLevelWithNet, self.level,
-                         gameTime=self.game_time, seed=self.seed)
+                         gameTime=self.game_time, seed=self.seed,
+                         threads=self.torch_threads)
         with tqdm(range(self.start_iteration, self.n_iterations), desc="Iterations", position=0) as pbar:
             for iteration in pbar:
                 solutions = self.scheduler.ask()

@@ -1,0 +1,4 @@
+# core.autocrlf is true on the Windows dev box. run_benchmark.sh is executed on a
+# Linux remote, where CRLF makes the shebang fail with "bad interpreter: ...^M".
+# Pin shell scripts to LF regardless of platform.
+*.sh text eol=lf

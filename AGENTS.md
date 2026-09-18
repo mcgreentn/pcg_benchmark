@@ -32,6 +32,9 @@ runner.py            runLevelWithNet(level, net) — evaluates one genome. Runs 
 analyzer.py          Plots an archive CSV as a heatmap. --archive/--output/--config/--no-show.
 listener.py          Legacy file-watcher evaluation path. Superseded by Dask; not wired in.
 config.py            Config loading + run-output path resolution, shared by the three above.
+benchmark.py         Capacity benchmark: cores/memory probe, worker sweep, thread sweep.
+run_benchmark.sh     Linux entry point for the above. Run this on the remote box.
+BENCHMARKING.md      Runbook: remote setup, reading the tables, applying the result.
 exp_config.yaml      Experiment hyperparameters and output_dir.
 test.py              Upstream smoke test: iterates every registered problem.
 data/smb/original/   15 original SMB levels as text (lvl-1.txt .. lvl-15.txt).
@@ -95,7 +98,32 @@ Built-in agents in `engine/agents/`: `astar` (used by the benchmark's playabilit
 - **Network** — `probs/smb/engine/agents/networks/simplenn.py`: 3× (Conv2d k=2 → MaxPool2d k=2) on a 1×16×16 observation, then `fc1(→32)` → `fc2(→5)` → sigmoid → rounded to a 5-bit action. No backprop; evolution only.
 - **Genome ↔ network** — `get_param()` / `set_param()` / `get_param_size()` walk `self._modules` and flatten `weight` then `bias` per module. `load_weights()` dispatches on type: `str` → torch checkpoint, `np.ndarray` → `set_param`. `get_weights()` returns a *torch tensor* over `self.parameters()`; `get_param()` returns *numpy*. Use **`get_param()`** on the genome path — it is the exact inverse of the `set_param()` that `load_weights(ndarray)` calls, so the emitter seed → evolve → load round-trip stays numpy end to end.
 
-**`exp_config.yaml` knobs:** search budget (`n_emitters`, `batch_size`, `n_iterations`, `checkpoint_interval`, `workers`), search behavior (`sigma0`, `ranker`), evaluation (`game_time`, `seed`), the `measures` block, and paths (`level_path`, `output_dir`). Evaluations per iteration = `n_emitters × batch_size`; the driver prints the resolved budget and seed at startup.
+**`exp_config.yaml` knobs:** search budget (`n_emitters`, `batch_size`, `n_iterations`, `checkpoint_interval`, `workers`, `torch_threads`), search behavior (`sigma0`, `ranker`), evaluation (`game_time`, `seed`), the `measures` block, and paths (`level_path`, `output_dir`). Evaluations per iteration = `n_emitters × batch_size`; the driver prints the resolved budget and seed at startup.
+
+**Sizing the compute (`benchmark.py`):** run this on the *target* machine before setting `workers` — a JupyterHub container is not your laptop, and neither `os.cpu_count()` nor `psutil.virtual_memory()` tells the truth inside one.
+
+```bash
+./run_benchmark.sh --dry-run    # probe + plan, evaluates nothing
+./run_benchmark.sh              # probe + plan + full sweep, logged
+```
+
+`run_benchmark.sh` is the Linux entry point: it picks an interpreter (`$PYTHON`, else `venv/bin/python`, else `python3` — the committed `venv/` is **Windows-only** and unusable there), checks imports, and tees everything to `<output_dir>/bench/run-<host>-<stamp>.log`. **`BENCHMARKING.md` is the runbook** — setup, how to read each table, how to translate the result into `exp_config.yaml`.
+
+Underneath, `benchmark.py <mode>` has modes `probe` (environment only), `eval` (serial baseline), `scale` (worker sweep), `threads` (thread oversubscription at fixed workers), `all`, and `--dry-run` on any of them. Results land in `<output_dir>/bench/bench-<host>-<stamp>.{json,csv}`, so two machines are directly comparable.
+
+Two things keep it safe to run unattended on a box you don't control. Each sweep point runs `--evals-per-worker` (default 4) × its worker count, so **every point costs about the same wall time** — a fixed eval count sized for the widest point would make the 1-worker point take that count × per-eval seconds, i.e. hours on a wide box. And the sweep skips any worker count whose projected memory exceeds `--headroom` (default 80%) of budget, because OOM-killing yourself mid-sweep loses every result collected so far.
+
+Three numbers come out of it, and they set three different knobs:
+
+| Measured | Sets |
+| --- | --- |
+| Effective cores (`min` of cpu_count, affinity, cgroup quota) and the throughput knee | `workers` |
+| Peak RSS per worker (~475 MB, dominated by torch) ÷ memory budget | ceiling on `workers`, independent of cores |
+| Thread sweep | `torch_threads` |
+
+**`torch_threads` (default 1) is the one that bites.** Parallelism here is across genomes — one Dask process per genome — and the network is far too small to gain from an intra-op thread pool. Left unpinned, torch sizes that pool from `os.cpu_count()`, which inside a container reports the **host's** cores: `workers × host_cores` runnable threads against a quota of a few. Measured locally at 4 workers, unpinned ran **2.5× slower** than one thread each (23.5s vs 9.2s for 16 evals). `driver.py` now pins it both in the worker environment (OMP/MKL size their pools at import, before any Python runs) and inside `runLevelWithNet` via `set_eval_threads()`.
+
+Also watch `n_emitters × batch_size` against `workers`: it is the whole wave Dask gets per iteration. Below `workers`, some workers idle every iteration; not a multiple of `workers`, and every iteration ends with a ragged partial wave. The recommendation block calls this out explicitly.
 
 **Reproducibility:** `seed` feeds the initial network (and therefore `x0`), every emitter (offset per emitter so they don't search identically), and the archive. With a seed, two runs of the same config produce byte-identical archives including all 2869 weights — verified by a check. Set `seed: null` for a fresh search each run. Individual *evaluations* are deterministic either way.
 

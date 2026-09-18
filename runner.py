@@ -1,6 +1,23 @@
+import torch
+
 from pcg_benchmark.probs.smb.engine.core import MarioAgent, MarioGame
 
 from pcg_benchmark.probs.smb.engine.agents import nn
+
+
+def set_eval_threads(threads):
+    """
+    Cap torch's intra-op thread pool inside an evaluation.
+
+    Parallelism here is across GENOMES (one Dask process each), not inside one
+    forward pass -- the network is tiny and the game loop is serial Python, so extra
+    threads buy nothing and cost contention. Left alone, torch sizes its pool from
+    os.cpu_count(), which in a container reports the HOST's cores: W workers x C
+    threads against a cgroup quota of a few cores. Measured on lvl-1, 4 workers
+    unpinned ran 2.5x slower than 4 workers at one thread each.
+    """
+    if threads:
+        torch.set_num_threads(threads)
 
 def runLevel(levelString, gameTime = 20, iterations = 100, stickyActions = 8, marioState = 0, seed = None):
     MarioAgent.iterations = iterations
@@ -11,7 +28,8 @@ def runLevel(levelString, gameTime = 20, iterations = 100, stickyActions = 8, ma
     # returns MarioResult
     return game.runGame(agent, levelString, gameTime, marioState)
 
-def runLevelWithNet(levelString, net, gameTime = 20, iterations = 100, stickyActions = 8, marioState = 0, seed = None):
+def runLevelWithNet(levelString, net, gameTime = 20, iterations = 100, stickyActions = 8, marioState = 0, seed = None, threads = 1):
+    set_eval_threads(threads)
     MarioAgent.iterations = iterations
     MarioAgent.stickyActions = stickyActions
     game = MarioGame()

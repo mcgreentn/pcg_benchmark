@@ -5,6 +5,13 @@ batch_size: 3          # genomes each emitter proposes per iteration
 n_iterations: 10       # ask/tell cycles -- 10 is a smoke test, not a real run
 checkpoint_interval: 5 # dump the archive every N iterations
 workers: 3             # Dask processes, one thread each
+# Torch intra-op threads INSIDE each evaluation. Keep at 1: parallelism here is
+# across genomes, and the net is far too small to gain from a thread pool. Left
+# unset torch sizes it from os.cpu_count(), which in a container reports the HOST's
+# cores -- workers x that many threads against a small quota, and throughput drops
+# (measured 2.5x slower at 4 workers). Run `benchmark.py all` on the target box to
+# size this and `workers` together.
+torch_threads: 1
 
 # --- search behaviour ----------------------------------------------------------
 sigma0: 1.0            # initial mutation spread of each emitter
